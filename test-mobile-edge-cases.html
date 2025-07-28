@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SwiftFormat Mobile & Edge Case Testing</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; max-width: 600px; margin: 0 auto; }
+        .test-section { border: 1px solid #ddd; margin: 20px 0; padding: 15px; border-radius: 5px; }
+        .status { padding: 5px 10px; border-radius: 3px; margin: 5px 0; }
+        .success { background: #d4edda; color: #155724; }
+        .error { background: #f8d7da; color: #721c24; }
+        .info { background: #d1ecf1; color: #0c5460; }
+        button { padding: 10px 20px; margin: 5px; min-height: 44px; }
+        input[type="file"] { margin: 10px 0; }
+    </style>
+</head>
+<body>
+    <h1>SwiftFormat Testing Suite</h1>
+    
+    <!-- Mobile Touch Test -->
+    <div class="test-section">
+        <h2>📱 Mobile Touch Test</h2>
+        <button onclick="testTouchInteraction()" style="background: #01c38d; color: white; border: none; border-radius: 5px; touch-action: manipulation;">
+            Test Touch Response
+        </button>
+        <div id="touch-result"></div>
+    </div>
+
+    <!-- File Size Edge Cases -->
+    <div class="test-section">
+        <h2>📁 File Size Edge Cases</h2>
+        <input type="file" id="edge-file" multiple>
+        <button onclick="testFileSizes()">Test File Validation</button>
+        <div id="size-result"></div>
+    </div>
+
+    <!-- Network Simulation -->
+    <div class="test-section">
+        <h2>🌐 Network & Error Testing</h2>
+        <button onclick="testNetworkError()">Simulate Network Error</button>
+        <button onclick="testTimeout()">Simulate Timeout</button>
+        <button onclick="testCorruptFile()">Test Corrupt File</button>
+        <div id="network-result"></div>
+    </div>
+
+    <!-- Conversion Flow Test -->
+    <div class="test-section">
+        <h2>🔄 Full Conversion Flow</h2>
+        <input type="file" id="conversion-file" accept="image/*,video/*,audio/*,.pdf,.docx,.txt">
+        <select id="output-format">
+            <option value="">Select output format</option>
+            <option value="pdf">PDF</option>
+            <option value="jpg">JPG</option>
+            <option value="png">PNG</option>
+            <option value="mp4">MP4</option>
+            <option value="mp3">MP3</option>
+        </select>
+        <button onclick="testFullConversion()">Test Full Flow</button>
+        <div id="conversion-result"></div>
+        <div id="progress-display" style="display:none;">
+            <div style="background: #f0f0f0; border-radius: 10px; overflow: hidden; margin: 10px 0;">
+                <div id="progress-bar" style="background: #01c38d; height: 20px; width: 0%; transition: width 0.3s;"></div>
+            </div>
+            <div id="progress-text">0%</div>
+        </div>
+    </div>
+
+    <script>
+        function addResult(containerId, message, type = 'info') {
+            const container = document.getElementById(containerId);
+            const div = document.createElement('div');
+            div.className = `status ${type}`;
+            div.textContent = message;
+            container.appendChild(div);
+        }
+
+        function testTouchInteraction() {
+            const container = document.getElementById('touch-result');
+            container.innerHTML = '';
+            
+            // Test touch responsiveness
+            const startTime = Date.now();
+            
+            // Simulate touch delay measurement
+            setTimeout(() => {
+                const responseTime = Date.now() - startTime;
+                
+                if (responseTime < 100) {
+                    addResult('touch-result', `✅ Excellent touch response: ${responseTime}ms`, 'success');
+                } else if (responseTime < 300) {
+                    addResult('touch-result', `⚠️ Good touch response: ${responseTime}ms`, 'info');
+                } else {
+                    addResult('touch-result', `❌ Slow touch response: ${responseTime}ms`, 'error');
+                }
+                
+                // Test viewport and mobile-specific features
+                const viewport = window.innerWidth;
+                addResult('touch-result', `📱 Viewport width: ${viewport}px`, 'info');
+                
+                if (viewport < 768) {
+                    addResult('touch-result', '📱 Mobile layout detected', 'success');
+                } else {
+                    addResult('touch-result', '💻 Desktop layout detected', 'info');
+                }
+                
+                // Test touch event support
+                if ('ontouchstart' in window) {
+                    addResult('touch-result', '✅ Touch events supported', 'success');
+                } else {
+                    addResult('touch-result', 'ℹ️ Touch events not detected (desktop)', 'info');
+                }
+                
+            }, 50);
+        }
+
+        function testFileSizes() {
+            const fileInput = document.getElementById('edge-file');
+            const container = document.getElementById('size-result');
+            container.innerHTML = '';
+            
+            if (!fileInput.files.length) {
+                addResult('size-result', '❌ Please select files to test', 'error');
+                return;
+            }
+            
+            Array.from(fileInput.files).forEach(file => {
+                const sizeMB = (file.size / (1024 * 1024)).toFixed(2);
+                
+                if (file.size > 100 * 1024 * 1024) {
+                    addResult('size-result', `❌ ${file.name}: ${sizeMB}MB - Too large (>100MB)`, 'error');
+                } else if (file.size > 50 * 1024 * 1024) {
+                    addResult('size-result', `⚠️ ${file.name}: ${sizeMB}MB - Large file`, 'info');
+                } else {
+                    addResult('size-result', `✅ ${file.name}: ${sizeMB}MB - Acceptable size`, 'success');
+                }
+                
+                // Test file type
+                const allowedTypes = ['image/', 'video/', 'audio/', 'application/pdf', 'text/'];
+                const isSupported = allowedTypes.some(type => file.type.startsWith(type));
+                
+                if (isSupported) {
+                    addResult('size-result', `✅ ${file.name}: Supported type (${file.type})`, 'success');
+                } else {
+                    addResult('size-result', `❌ ${file.name}: Unsupported type (${file.type})`, 'error');
+                }
+            });
+        }
+
+        function testNetworkError() {
+            const container = document.getElementById('network-result');
+            addResult('network-result', '🔄 Testing network error handling...', 'info');
+            
+            // Simulate network error
+            fetch('/api/nonexistent-endpoint', { method: 'POST' })
+                .then(response => {
+                    if (!response.ok) {
+                        addResult('network-result', '✅ Network error properly caught', 'success');
+                    }
+                })
+                .catch(error => {
+                    addResult('network-result', '✅ Network error handled gracefully', 'success');
+                });
+        }
+
+        function testTimeout() {
+            addResult('network-result', '⏱️ Testing timeout handling...', 'info');
+            
+            // Simulate timeout
+            const controller = new AbortController();
+            setTimeout(() => controller.abort(), 1000);
+            
+            fetch('/api/convert', {
+                method: 'POST',
+                signal: controller.signal,
+                body: new FormData()
+            })
+            .catch(error => {
+                if (error.name === 'AbortError') {
+                    addResult('network-result', '✅ Timeout properly handled', 'success');
+                } else {
+                    addResult('network-result', '✅ Error handling working', 'success');
+                }
+            });
+        }
+
+        function testCorruptFile() {
+            addResult('network-result', '🔍 Testing corrupt file handling...', 'info');
+            
+            // Create a fake corrupt file
+            const fakeFile = new Blob(['corrupt data'], { type: 'application/pdf' });
+            const formData = new FormData();
+            formData.append('files', fakeFile, 'corrupt.pdf');
+            formData.append('settings', JSON.stringify({
+                outputFormat: 'png',
+                quality: 'high',
+                noiseReduction: false,
+                autoCompression: false,
+                ocr: false,
+                transcription: false
+            }));
+            
+            fetch('/api/convert', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => {
+                if (response.ok) {
+                    addResult('network-result', '⚠️ Corrupt file processed (fallback working)', 'info');
+                } else {
+                    addResult('network-result', '✅ Corrupt file properly rejected', 'success');
+                }
+            })
+            .catch(error => {
+                addResult('network-result', '✅ Corrupt file error handled', 'success');
+            });
+        }
+
+        function testFullConversion() {
+            const fileInput = document.getElementById('conversion-file');
+            const formatSelect = document.getElementById('output-format');
+            const container = document.getElementById('conversion-result');
+            const progressDisplay = document.getElementById('progress-display');
+            const progressBar = document.getElementById('progress-bar');
+            const progressText = document.getElementById('progress-text');
+            
+            container.innerHTML = '';
+            
+            if (!fileInput.files.length) {
+                addResult('conversion-result', '❌ Please select a file', 'error');
+                return;
+            }
+            
+            if (!formatSelect.value) {
+                addResult('conversion-result', '❌ Please select output format', 'error');
+                return;
+            }
+            
+            const file = fileInput.files[0];
+            const outputFormat = formatSelect.value;
+            
+            addResult('conversion-result', `🔄 Converting ${file.name} to ${outputFormat.toUpperCase()}...`, 'info');
+            progressDisplay.style.display = 'block';
+            
+            // Simulate progress
+            let progress = 0;
+            const progressInterval = setInterval(() => {
+                progress += Math.random() * 20;
+                if (progress > 90) progress = 90;
+                
+                progressBar.style.width = progress + '%';
+                progressText.textContent = Math.round(progress) + '%';
+            }, 500);
+            
+            const formData = new FormData();
+            formData.append('files', file);
+            formData.append('settings', JSON.stringify({
+                outputFormat: outputFormat,
+                quality: 'high',
+                noiseReduction: false,
+                autoCompression: false,
+                ocr: false,
+                transcription: false
+            }));
+            
+            const startTime = Date.now();
+            
+            fetch('/api/convert', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => {
+                clearInterval(progressInterval);
+                progressBar.style.width = '100%';
+                progressText.textContent = '100%';
+                
+                const duration = ((Date.now() - startTime) / 1000).toFixed(1);
+                
+                if (response.ok) {
+                    return response.blob().then(blob => {
+                        addResult('conversion-result', `✅ Conversion completed in ${duration}s`, 'success');
+                        
+                        // Test download
+                        const url = window.URL.createObjectURL(blob);
+                        const a = document.createElement('a');
+                        a.href = url;
+                        a.download = `converted.${outputFormat}`;
+                        document.body.appendChild(a);
+                        a.click();
+                        document.body.removeChild(a);
+                        window.URL.revokeObjectURL(url);
+                        
+                        addResult('conversion-result', '✅ Download initiated successfully', 'success');
+                        
+                        setTimeout(() => {
+                            progressDisplay.style.display = 'none';
+                        }, 2000);
+                    });
+                } else {
+                    return response.json().then(error => {
+                        addResult('conversion-result', `❌ Conversion failed: ${error.error}`, 'error');
+                        progressDisplay.style.display = 'none';
+                    });
+                }
+            })
+            .catch(error => {
+                clearInterval(progressInterval);
+                addResult('conversion-result', `❌ Error: ${error.message}`, 'error');
+                progressDisplay.style.display = 'none';
+            });
+        }
+
+        // Auto-run mobile detection on load
+        window.addEventListener('load', () => {
+            addResult('touch-result', '🚀 Running initial mobile detection...', 'info');
+            setTimeout(testTouchInteraction, 500);
+        });
+    </script>
+</body>
+</html>

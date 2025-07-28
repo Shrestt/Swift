@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>SwiftFormat Test Flows</title>
+</head>
+<body>
+    <h1>SwiftFormat Application Test Flows</h1>
+    
+    <h2>1. File Conversion Test</h2>
+    <form id="uploadForm" enctype="multipart/form-data">
+        <input type="file" id="fileInput" name="files" multiple>
+        <select id="formatSelect">
+            <option value="pdf">PDF</option>
+            <option value="mp4">MP4</option>
+            <option value="jpg">JPG</option>
+            <option value="png">PNG</option>
+        </select>
+        <button type="submit">Convert</button>
+    </form>
+    
+    <div id="result"></div>
+    
+    <script>
+        document.getElementById('uploadForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const formData = new FormData();
+            const files = document.getElementById('fileInput').files;
+            const format = document.getElementById('formatSelect').value;
+            
+            if (files.length === 0) {
+                alert('Please select a file');
+                return;
+            }
+            
+            for (let file of files) {
+                formData.append('files', file);
+            }
+            
+            formData.append('settings', JSON.stringify({
+                outputFormat: format,
+                quality: 'high',
+                noiseReduction: false,
+                autoCompression: false,
+                ocr: false,
+                transcription: false
+            }));
+            
+            try {
+                const response = await fetch('/api/convert', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                if (response.ok) {
+                    const blob = await response.blob();
+                    const url = window.URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = `converted.${format}`;
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                    window.URL.revokeObjectURL(url);
+                    
+                    document.getElementById('result').innerHTML = '<p style="color: green;">Conversion successful!</p>';
+                } else {
+                    const error = await response.json();
+                    document.getElementById('result').innerHTML = `<p style="color: red;">Error: ${error.error}</p>`;
+                }
+            } catch (error) {
+                document.getElementById('result').innerHTML = `<p style="color: red;">Error: ${error.message}</p>`;
+            }
+        });
+    </script>
+</body>
+</html>
